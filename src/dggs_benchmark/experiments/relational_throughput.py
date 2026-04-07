@@ -100,7 +100,17 @@ class RelationalThroughputExperiment:
         overture_path = data_dir / f'overture_buildings_{self.samples}.parquet'
         
         print(f"  Loading {self.samples} Real-world Overture Building Centroids...")
-        if not overture_path.exists():
+        valid_parquet = False
+        if overture_path.exists():
+            try:
+                # Test validity of the buffer (Avoids PyArrow crash if file was touched but left empty by Ctrl+C)
+                points_df = pd.read_parquet(overture_path)
+                valid_parquet = True
+            except Exception:
+                print("  [Warning] Existing Overture parquet file is corrupted/empty (likely from an aborted run). Repairing...")
+                overture_path.unlink()
+                
+        if not valid_parquet:
             print("  Downloading Overture Maps Buildings directly from Amazon S3 (this happens once)...")
             self.con.execute("INSTALL httpfs; LOAD httpfs;")
             self.con.execute("SET s3_region = 'us-west-2';")
@@ -140,8 +150,8 @@ class RelationalThroughputExperiment:
             merged_df['id'] = merged_df.index
             
             merged_df.to_parquet(overture_path)
+            points_df = merged_df
             
-        points_df = pd.read_parquet(overture_path)
         print(f"  Data Source Distribution:")
         print(points_df['source_dataset'].value_counts())
         return points_df
