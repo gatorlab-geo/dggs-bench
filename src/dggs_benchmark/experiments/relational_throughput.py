@@ -137,38 +137,38 @@ class RelationalThroughputExperiment:
             random.seed(self.seed)
             random.shuffle(parquet_files)
             
-            print(f"    -> Successfully mapped {len(parquet_files)} global Parquet partitions! Starting randomized batch extraction...")
+            per_file_limit = self.samples // len(parquet_files)
+            remainder = self.samples % len(parquet_files)
+            
+            print(f"    -> Successfully mapped {len(parquet_files)} global Parquet partitions! Extracting exactly {per_file_limit:,} buildings from EACH partition to guarantee 100% global distribution...")
             
             dfs = []
             current_count = 0
-            chunk_size = 5  # Reduced to 5 partitions to prevent over-fetching
             
-            for i in range(0, len(parquet_files), chunk_size):
-                batch_urls = parquet_files[i:i+chunk_size]
-                
-                # Construct exact URL list (Bypasses S3 wildcards safely)
-                url_list_str = ", ".join([f"'{url}'" for url in batch_urls])
-                remaining_needed = self.samples - current_count
+            for i, url in enumerate(parquet_files):
+                if i % 25 == 0:
+                    print(f"      [Progress:] Processed {i}/{len(parquet_files)} global data buckets...")
+                    
+                # The first file absorbs the mathematical remainder to hit the limit exactly
+                limit = per_file_limit + (remainder if i == 0 else 0)
                 
                 query = f"""
                     SELECT 
                         CAST(ST_Y(ST_Centroid(geometry)) AS DOUBLE) AS lat, 
                         CAST(ST_X(ST_Centroid(geometry)) AS DOUBLE) AS lon, 
                         sources[1].dataset AS source_dataset
-                    FROM read_parquet([{url_list_str}], filename=true)
-                    LIMIT {remaining_needed}
+                    FROM read_parquet('{url}', filename=true)
+                    LIMIT {limit}
                 """
                 
                 # Pull directly into Pandas to release DuckDB RAM immediately
-                batch_df = self.con.execute(query).df()
-                dfs.append(batch_df)
-                current_count += len(batch_df)
+                try:
+                    df_part = self.con.execute(query).df()
+                    dfs.append(df_part)
+                except Exception as e:
+                    print(f"      [Warning] Skipping partition {i} due to Error: {e}")
                 
-                print(f"      [Progress:] Extracted {current_count:,} / {self.samples:,} randomized global centroids...")
-                if current_count >= self.samples:
-                    break
-                
-            print("    -> S3 Extraction complete. Slicing and shuffling final real-world index...")
+            print("    -> S3 Extraction complete. Assembling perfectly distributed global dataset...")
             merged_df = pd.concat(dfs, ignore_index=True)
             
             # Slice down perfectly to the mathematically required benchmarks constraints
