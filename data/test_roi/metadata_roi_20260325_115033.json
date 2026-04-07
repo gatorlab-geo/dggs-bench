@@ -1,0 +1,7 @@
+{
+    "experiment": "Relational Throughput",
+    "samples": 100,
+    "seed": 42,
+    "timestamp": "20260325_115033",
+    "output_file": "data/test_roi/relational_throughput_20260325_115033.csv"
+}

@@ -1,0 +1,13 @@
+{
+    "experiment": "Geometric Distortion",
+    "samples": 10000,
+    "seed": 42,
+    "grids_tested": [
+        "ISEA3H (Aperture 3 Hexagons)"
+    ],
+    "resolutions": {
+        "ISEA3H (Aperture 3 Hexagons)": 16
+    },
+    "timestamp": "20260325_145855",
+    "output_file": "data/fix_test/geometric_distortion_20260325_145855.parquet"
+}

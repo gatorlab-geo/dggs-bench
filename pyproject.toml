@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dggs_benchmark"
+version = "0.1.0"
+description = "A reproducible benchmarking framework for Discrete Global Grid Systems (DGGS) — comparing H3, S2, rHEALPix, A5, QTM, UTM, Web Mercator, and XYZ tiles across geodetic area variance, shape compactness, and topological metrics."
+readme = "README.md"
+authors = [
+    {name = "Levente Juhász", email = "ljuhasz@ufl.edu"}
+]
+license = {file = "LICENSE"}
+keywords = ["dggs", "geospatial", "h3", "s2", "benchmarking", "geoai", "discrete-global-grid"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Intended Audience :: Science/Research",
+    "Development Status :: 3 - Alpha",
+]
+dependencies = [
+    "h3>=3.7.6",
+    "s2sphere>=0.2.5",
+    "geopandas>=0.14.0",
+    "shapely>=2.0.0",
+    "pyproj>=3.6.0",
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+    "pyarrow>=14.0.0",
+    "mercantile>=1.2.1",
+]
+requires-python = ">=3.9"
+
+[project.urls]
+Homepage = "https://github.com/gatorlab/dggs-benchmark"
+"Bug Tracker" = "https://github.com/gatorlab/dggs-benchmark/issues"
+Organization = "https://gatorlab.io"
+
+[project.scripts]
+dggs-bench = "dggs_benchmark.cli:main"

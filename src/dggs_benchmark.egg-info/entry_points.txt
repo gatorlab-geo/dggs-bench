@@ -1,0 +1,2 @@
+[console_scripts]
+dggs-bench = dggs_benchmark.cli:main
