@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 from shapely.geometry import Polygon
 import a5
 from .base import BaseGrid
@@ -38,3 +38,20 @@ class A5Grid(BaseGrid):
         """
         neighbors = a5.grid_disk(int(cell_id), k)
         return [str(n) for n in neighbors]
+
+    def get_cell_center(self, cell_id: str) -> Tuple[float, float]:
+        """
+        Returns the center lat/lon of the A5 cell.
+        """
+        if hasattr(a5, "cell_to_lonlat"):
+            lon, lat = a5.cell_to_lonlat(int(cell_id))
+            return float(lat), float(lon)
+        
+        poly = self.get_cell_polygon(cell_id)
+        return float(poly.centroid.y), float(poly.centroid.x)
+
+    def get_covering(self, polygon: Polygon, resolution: int) -> List[str]:
+        """
+        Returns all A5 cells covering the polygon.
+        """
+        raise NotImplementedError("A5 get_covering is not yet implemented.")
