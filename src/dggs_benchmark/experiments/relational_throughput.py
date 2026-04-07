@@ -115,37 +115,63 @@ class RelationalThroughputExperiment:
             self.con.execute("INSTALL httpfs; LOAD httpfs;")
             self.con.execute("SET s3_region = 'us-west-2';")
             
-            # Divide the massive global download request into 5 tiny independent S3 streams
-            # This completely destroys DuckDB's 40GB+ memory spike caused by global sorting operations.
-            bboxes = [
-                "bbox.ymin > 35 AND bbox.ymax < 60 AND bbox.xmin > -10 AND bbox.xmax < 30", # Europe
-                "bbox.ymin > -35 AND bbox.ymax < 5 AND bbox.xmin > -80 AND bbox.xmax < -35", # South America
-                "bbox.ymin > -35 AND bbox.ymax < 0 AND bbox.xmin > 10 AND bbox.xmax < 40", # Africa
-                "bbox.ymin > -40 AND bbox.ymax < -10 AND bbox.xmin > 110 AND bbox.xmax < 155", # Australia
-                "bbox.ymin > 5 AND bbox.ymax < 35 AND bbox.xmin > 65 AND bbox.xmax < 95" # Asia
-            ]
+            import boto3
+            from botocore import UNSIGNED
+            from botocore.config import Config
+            import random
+
+            print("    -> Fetching Overture Partition Dictionary from AWS S3 (Instant Boto3 Metadata)...")
+            s3 = boto3.client('s3', region_name='us-west-2', config=Config(signature_version=UNSIGNED))
             
-            sub_limit = self.samples // len(bboxes)
+            # Fetch ALL file keys quickly
+            paginator = s3.get_paginator('list_objects_v2')
+            pages = paginator.paginate(Bucket='overturemaps-us-west-2', Prefix='release/2026-03-18.0/theme=buildings/type=building/')
+            
+            parquet_files = []
+            for page in pages:
+                for obj in page.get('Contents', []):
+                    if obj['Key'].endswith('.parquet'):
+                        parquet_files.append(f"s3://overturemaps-us-west-2/{obj['Key']}")
+            
+            # STRICT GLOBAL RANDOMIZATION
+            random.seed(self.seed)
+            random.shuffle(parquet_files)
+            
+            print(f"    -> Successfully mapped {len(parquet_files)} global Parquet partitions! Starting randomized batch extraction...")
+            
             dfs = []
+            current_count = 0
+            chunk_size = 30  # Batch physical file streams for DuckDB connection efficiency
             
-            for i, bbox in enumerate(bboxes):
-                print(f"    -> Querying Amazon bucket for Region {i+1}...")
+            for i in range(0, len(parquet_files), chunk_size):
+                batch_urls = parquet_files[i:i+chunk_size]
+                
+                # Construct exact URL list (Bypasses S3 wildcards safely)
+                url_list_str = ", ".join([f"'{url}'" for url in batch_urls])
                 query = f"""
                     SELECT 
                         CAST(ST_Y(ST_Centroid(geometry)) AS DOUBLE) AS lat, 
                         CAST(ST_X(ST_Centroid(geometry)) AS DOUBLE) AS lon, 
                         sources[1].dataset AS source_dataset
-                    FROM read_parquet('s3://overturemaps-us-west-2/release/2026-03-18.0/theme=buildings/type=building/*', filename=true) 
-                    WHERE {bbox}
-                    LIMIT {sub_limit}
+                    FROM read_parquet([{url_list_str}], filename=true)
                 """
-                # Instantly dumps the stream to pandas, freeing the database RAM immediately
-                hub_df = self.con.execute(query).df()
-                dfs.append(hub_df)
                 
-            print("    -> S3 Downloads complete. Shuffling real-world global geometries into final index...")
+                # Pull directly into Pandas to release DuckDB RAM immediately
+                batch_df = self.con.execute(query).df()
+                dfs.append(batch_df)
+                current_count += len(batch_df)
+                
+                print(f"      [Progress:] Extracted {current_count:,} / {self.samples:,} randomized global centroids...")
+                if current_count >= self.samples:
+                    break
+                
+            print("    -> S3 Extraction complete. Slicing and shuffling final real-world index...")
             merged_df = pd.concat(dfs, ignore_index=True)
-            # Shuffle strictly in python (Memory efficient) and assign IDs
+            
+            # Slice down perfectly to the mathematically required benchmarks constraints
+            merged_df = merged_df.iloc[:self.samples]
+            
+            # Shuffle strictly in python and assign sequential IDs for R-Tree JOIN requirements
             merged_df = merged_df.sample(frac=1, random_state=self.seed).reset_index(drop=True)
             merged_df['id'] = merged_df.index
             

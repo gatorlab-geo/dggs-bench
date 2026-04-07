@@ -25,6 +25,7 @@ classifiers = [
     "Development Status :: 3 - Alpha",
 ]
 dependencies = [
+    "boto3",
     "h3>=3.7.6",
     "s2sphere>=0.2.5",
     "geopandas>=0.14.0",
