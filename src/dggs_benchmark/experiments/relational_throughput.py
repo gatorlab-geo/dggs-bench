@@ -31,8 +31,51 @@ class RelationalThroughputExperiment:
     def _generate_points(self) -> pd.DataFrame:
         if self.distribution == "uniform":
             return self._generate_fibonacci_sphere()
+        elif self.distribution == "urban_synthetic":
+            return self._generate_urban_synthetic()
         else:
             return self._load_overture_buildings()
+
+    def _generate_urban_synthetic(self) -> pd.DataFrame:
+        print(f"  Generating {self.samples} massively clustered 'real-world' urban points (Synthetic Gaussian)...")
+        # 10 Major Global Hubs (Lat, Lon)
+        hubs = [
+            (40.7128, -74.0060),  # North America: NYC
+            (51.5074, -0.1278),   # Europe: London
+            (48.8566, 2.3522),    # Europe: Paris
+            (35.6762, 139.6503),  # Asia: Tokyo
+            (19.0760, 72.8777),   # Asia: Mumbai
+            (39.9042, 116.4074),  # Asia: Beijing
+            (-23.5505, -46.6333), # South America: Sao Paulo
+            (-26.2041, 28.0473),  # Africa: Johannesburg
+            (6.5244, 3.3792),     # Africa: Lagos
+            (-33.8688, 151.2093)  # Oceania: Sydney
+        ]
+        
+        points = []
+        np.random.seed(self.seed)
+        points_per_hub = self.samples // len(hubs)
+        remainder = self.samples % len(hubs)
+        
+        for i, (hub_lat, hub_lon) in enumerate(hubs):
+            # Assign remainder points to the first hub
+            n_points = points_per_hub + (remainder if i == 0 else 0)
+            
+            # Gaussian mathematical spread: standard deviation of 2.5 degrees roughly maps to a 250km sprawl cluster
+            lats = np.random.normal(hub_lat, 2.5, n_points)
+            lons = np.random.normal(hub_lon, 2.5, n_points)
+            
+            # Clamp geometrically out-of-bounds anomalies falling off the 90th parallels or 180 anti-meridian
+            lats = np.clip(lats, -90.0, 90.0)
+            lons = np.clip(lons, -180.0, 180.0)
+            
+            cluster_df = pd.DataFrame({'lat': lats, 'lon': lons})
+            points.append(cluster_df)
+            
+        df = pd.concat(points, ignore_index=True)
+        # Sequential IDs required for correct Relational JOINs across frameworks
+        df['id'] = df.index
+        return df
 
     def _generate_fibonacci_sphere(self) -> pd.DataFrame:
         print(f"  Generating {self.samples} Fibonacci points uniformly across the globe...")

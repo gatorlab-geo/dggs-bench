@@ -485,8 +485,8 @@ Grid Selection:
         help="Export actual GeoPackage geometries (Cells and Points) during Exp 3 runs for visual debugging."
     )
     run_parser.add_argument(
-        "--point-distribution", type=str, choices=["uniform", "real"], default="real",
-        help="Use 'uniform' for Fibonacci sphere point generation. Use 'real' for real-world clustered Overture Building centroids."
+        "--point-distribution", type=str, choices=["uniform", "real", "urban_synthetic"], default="real",
+        help="Use 'uniform' for Fibonacci sphere. Use 'real' for Overture Maps S3 records. Use 'urban_synthetic' for 0.05sec clustered mega-city models."
     )
 
     # -- generate-points ----------------------------------------------------
