@@ -60,6 +60,7 @@ class RelationalThroughputExperiment:
         if not overture_path.exists():
             print("  Downloading Overture Maps Buildings directly from Amazon S3 (this happens once)...")
             self.con.execute("INSTALL httpfs; LOAD httpfs;")
+            self.con.execute("SET s3_region = 'us-west-2';")
             
             # Extract centroid lat/lon and extract the 'dataset' field from the first source struct
             query = f"""
@@ -69,7 +70,7 @@ class RelationalThroughputExperiment:
                         CAST(ST_Y(ST_Centroid(geometry)) AS DOUBLE) AS lat, 
                         CAST(ST_X(ST_Centroid(geometry)) AS DOUBLE) AS lon, 
                         sources[1].dataset AS source_dataset
-                    FROM read_parquet('s3://overturemaps-us-west-2/release/2024-05-16-beta.0/theme=buildings/type=building/*', filename=true) 
+                    FROM read_parquet('s3://overturemaps-us-west-2/release/2026-03-18.0/theme=buildings/type=building/*', filename=true) 
                     LIMIT {self.samples}
                 ) TO '{overture_path}' (FORMAT PARQUET)
             """
