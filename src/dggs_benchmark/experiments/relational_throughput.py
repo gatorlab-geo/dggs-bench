@@ -141,19 +141,22 @@ class RelationalThroughputExperiment:
             
             dfs = []
             current_count = 0
-            chunk_size = 30  # Batch physical file streams for DuckDB connection efficiency
+            chunk_size = 5  # Reduced to 5 partitions to prevent over-fetching
             
             for i in range(0, len(parquet_files), chunk_size):
                 batch_urls = parquet_files[i:i+chunk_size]
                 
                 # Construct exact URL list (Bypasses S3 wildcards safely)
                 url_list_str = ", ".join([f"'{url}'" for url in batch_urls])
+                remaining_needed = self.samples - current_count
+                
                 query = f"""
                     SELECT 
                         CAST(ST_Y(ST_Centroid(geometry)) AS DOUBLE) AS lat, 
                         CAST(ST_X(ST_Centroid(geometry)) AS DOUBLE) AS lon, 
                         sources[1].dataset AS source_dataset
                     FROM read_parquet([{url_list_str}], filename=true)
+                    LIMIT {remaining_needed}
                 """
                 
                 # Pull directly into Pandas to release DuckDB RAM immediately
