@@ -71,6 +71,13 @@ class RelationalThroughputExperiment:
                         CAST(ST_X(ST_Centroid(geometry)) AS DOUBLE) AS lon, 
                         sources[1].dataset AS source_dataset
                     FROM read_parquet('s3://overturemaps-us-west-2/release/2026-03-18.0/theme=buildings/type=building/*', filename=true) 
+                    WHERE 
+                           (bbox.ymin > 35 AND bbox.ymax < 60 AND bbox.xmin > -10 AND bbox.xmax < 30) -- Europe
+                        OR (bbox.ymin > -35 AND bbox.ymax < 5 AND bbox.xmin > -80 AND bbox.xmax < -35) -- South America (Brazil focused)
+                        OR (bbox.ymin > -35 AND bbox.ymax < 0 AND bbox.xmin > 10 AND bbox.xmax < 40) -- Africa (South Africa focused)
+                        OR (bbox.ymin > -40 AND bbox.ymax < -10 AND bbox.xmin > 110 AND bbox.xmax < 155) -- Australia
+                        OR (bbox.ymin > 5 AND bbox.ymax < 35 AND bbox.xmin > 65 AND bbox.xmax < 95) -- Asia (India focused)
+                    ORDER BY random()
                     LIMIT {self.samples}
                 ) TO '{overture_path}' (FORMAT PARQUET)
             """
