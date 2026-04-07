@@ -159,7 +159,7 @@ def run_relational_throughput(args):
     grids, resolutions = _instantiate_grids(selected)
     
     print(f"--- Initializing Relational Throughput Benchmark (ID-Joins) [{args.scale.upper()} SCALE] ---")
-    experiment = RelationalThroughputExperiment(grids=grids, samples=args.samples, seed=args.seed, scale=args.scale, save_geometries=args.save_geometries, output_dir=args.output_dir, point_distribution=args.point_distribution)
+    experiment = RelationalThroughputExperiment(grids=grids, samples=args.samples, seed=args.seed, scale=args.scale, save_geometries=args.save_geometries, output_dir=args.output_dir, distribution=args.point_distribution)
 
     print(f"Executing over {len(grids)} grids with {args.samples} samples...")
     # Define the ROI Sweep resolutions for the paper (Dense Sweep for smooth plotting)
