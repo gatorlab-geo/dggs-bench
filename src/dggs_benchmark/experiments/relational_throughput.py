@@ -381,6 +381,12 @@ class RelationalThroughputExperiment:
                         if not pts_df.empty:
                             gpd.GeoDataFrame(pts_df, geometry=gpd.points_from_xy(pts_df.lon, pts_df.lat), crs="EPSG:4326").to_file(gpkg_path, layer="matched_points", driver="GPKG")
                             
+                    # CRITICAL: Flush DuckDB memory pool to prevent 40GB+ RAM OOM errors!
+                    self.con.execute(f"DROP TABLE p_{clean_name}_{res}")
+                    self.con.execute(f"DROP TABLE c_{clean_name}_{res}")
+                    import gc
+                    gc.collect()
+                            
                 except Exception as e:
                     print(f"    [Error] Join failed: {e}")
 
