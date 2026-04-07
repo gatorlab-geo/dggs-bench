@@ -105,20 +105,41 @@ class RelationalThroughputExperiment:
             self.con.execute("INSTALL httpfs; LOAD httpfs;")
             self.con.execute("SET s3_region = 'us-west-2';")
             
-            # Extract centroid lat/lon and extract the 'dataset' field from the first source struct
-            query = f"""
-                COPY (
+            # Divide the massive global download request into 5 tiny independent S3 streams
+            # This completely destroys DuckDB's 40GB+ memory spike caused by global sorting operations.
+            bboxes = [
+                "bbox.ymin > 35 AND bbox.ymax < 60 AND bbox.xmin > -10 AND bbox.xmax < 30", # Europe
+                "bbox.ymin > -35 AND bbox.ymax < 5 AND bbox.xmin > -80 AND bbox.xmax < -35", # South America
+                "bbox.ymin > -35 AND bbox.ymax < 0 AND bbox.xmin > 10 AND bbox.xmax < 40", # Africa
+                "bbox.ymin > -40 AND bbox.ymax < -10 AND bbox.xmin > 110 AND bbox.xmax < 155", # Australia
+                "bbox.ymin > 5 AND bbox.ymax < 35 AND bbox.xmin > 65 AND bbox.xmax < 95" # Asia
+            ]
+            
+            sub_limit = self.samples // len(bboxes)
+            dfs = []
+            
+            for i, bbox in enumerate(bboxes):
+                print(f"    -> Querying Amazon bucket for Region {i+1}...")
+                query = f"""
                     SELECT 
-                        ROW_NUMBER() OVER () as id,
                         CAST(ST_Y(ST_Centroid(geometry)) AS DOUBLE) AS lat, 
                         CAST(ST_X(ST_Centroid(geometry)) AS DOUBLE) AS lon, 
                         sources[1].dataset AS source_dataset
                     FROM read_parquet('s3://overturemaps-us-west-2/release/2026-03-18.0/theme=buildings/type=building/*', filename=true) 
-                    USING SAMPLE 1 PERCENT (SYSTEM)
-                    LIMIT {self.samples}
-                ) TO '{overture_path}' (FORMAT PARQUET)
-            """
-            self.con.execute(query)
+                    WHERE {bbox}
+                    LIMIT {sub_limit}
+                """
+                # Instantly dumps the stream to pandas, freeing the database RAM immediately
+                hub_df = self.con.execute(query).df()
+                dfs.append(hub_df)
+                
+            print("    -> S3 Downloads complete. Shuffling real-world global geometries into final index...")
+            merged_df = pd.concat(dfs, ignore_index=True)
+            # Shuffle strictly in python (Memory efficient) and assign IDs
+            merged_df = merged_df.sample(frac=1, random_state=self.seed).reset_index(drop=True)
+            merged_df['id'] = merged_df.index
+            
+            merged_df.to_parquet(overture_path)
             
         points_df = pd.read_parquet(overture_path)
         print(f"  Data Source Distribution:")
