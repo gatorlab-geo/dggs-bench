@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 from shapely.geometry import Polygon
 from vgrid.dggs import qtm
 from .base import BaseGrid
@@ -47,3 +47,16 @@ class QTMGrid(BaseGrid):
         For now we yield immediate children/parents or raise NotImplementedError.
         """
         raise NotImplementedError("K-Ring generation for QTM is not yet natively supported by the backend.")
+
+    def get_cell_center(self, cell_id: str) -> Tuple[float, float]:
+        """
+        Returns the center lat/lon of the QTM cell.
+        """
+        poly = self.get_cell_polygon(cell_id)
+        return float(poly.centroid.y), float(poly.centroid.x)
+
+    def get_covering(self, polygon: Polygon, resolution: int) -> List[str]:
+        """
+        Returns all QTM cells covering the polygon.
+        """
+        raise NotImplementedError("QTM get_covering is not yet implemented.")
