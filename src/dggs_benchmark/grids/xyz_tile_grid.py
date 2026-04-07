@@ -1,5 +1,5 @@
 import mercantile
-from typing import List
+from typing import List, Tuple
 from shapely.geometry import Polygon
 from .base import BaseGrid
 
@@ -106,3 +106,20 @@ class XYZTileGrid(BaseGrid):
         x = int(x_str)
         y = int(y_str)
         return f"{z-1}/{x//2}/{y//2}"
+
+    def get_cell_center(self, cell_id: str) -> Tuple[float, float]:
+        """
+        Returns the center lat/lon of the XYZ tile.
+        """
+        z_str, x_str, y_str = cell_id.split("/")
+        tile = mercantile.Tile(x=int(x_str), y=int(y_str), z=int(z_str))
+        b = mercantile.bounds(tile)
+        center_lat = (b.north + b.south) / 2.0
+        center_lon = (b.east + b.west) / 2.0
+        return center_lat, center_lon
+
+    def get_covering(self, polygon: Polygon, resolution: int) -> List[str]:
+        """
+        Returns all XYZ tiles covering the given polygon.
+        """
+        raise NotImplementedError("XYZ get_covering is not yet implemented.")
