@@ -431,6 +431,21 @@ class RelationalThroughputExperiment:
                     print(f"    Encoding: {ingestion_sec:.4f}s | Covering: {covering_sec:.4f}s | Join: {join_sec:.4f}s")
                     print(f"    Matches: {count_dggs} (Accuracy vs Vector: {(count_dggs/max(1, count_vec))*100:.2f}%)")
                     
+                    # --- Spatial Debugging Geometry Export ---
+                    if self.save_geometries and len(all_covering_cells) > 0:
+                        try:
+                            import geopandas as gpd
+                            # Limit exported covering visual geometries to 25,000 maximum to prevent generating
+                            # catastrophic 15GB .gpkg files that crash QGIS natively on load.
+                            viz_cells = pd.DataFrame(all_covering_cells).head(25000)
+                            geoms = [grid.get_cell_polygon(c) for c in viz_cells['cell_id']]
+                            gdf = gpd.GeoDataFrame(viz_cells, geometry=geoms, crs="EPSG:4326")
+                            gpkg_path = Path(self.output_dir) / f"cov_export_{clean_name}_{res}_{self.scale}.gpkg"
+                            gdf.to_file(gpkg_path, driver="GPKG")
+                            print(f"    [Visuals] Covering geometries explicitly exported -> {gpkg_path.name}")
+                        except Exception as e:
+                            print(f"    [Warning] Failed to generate visual QGIS debugging GPKG: {e}")
+                    
                     results.append({
                         "grid_name": grid.name,
                         "resolution": res,
