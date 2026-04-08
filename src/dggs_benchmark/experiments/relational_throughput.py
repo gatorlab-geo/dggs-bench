@@ -105,9 +105,9 @@ class RelationalThroughputExperiment:
         data_dir = project_root / 'data' / 'foursquare'
         data_dir.mkdir(parents=True, exist_ok=True)
         
-        places_path = data_dir / f'foursquare_places_{self.samples}.parquet'
+        places_path = data_dir / 'foursquare_places_master.parquet'
         
-        print(f"  Loading {self.samples} Real-world Foursquare Places...")
+        print(f"  Checking for Local Master Cache: Foursquare Places...")
         valid_parquet = False
         if places_path.exists():
             try:
@@ -178,6 +178,13 @@ class RelationalThroughputExperiment:
             # Assign sequential IDs required for R-Tree JOIN tests
             points_df['id'] = points_df.index
             points_df.to_parquet(places_path)
+            
+        print(f"  -> Local Master Cache contains {len(points_df)} points.")
+        if len(points_df) > self.samples:
+            print(f"  -> Target samples parameter is {self.samples}. Dynamically truncating geometry pool for this test sweep...")
+            points_df = points_df.head(self.samples)
+        elif len(points_df) < self.samples:
+            print(f"  [Warning] You requested {self.samples} points, but the cache only has {len(points_df)}! Running with {len(points_df)} available points.")
             
         print(f"  Data Source Distribution:")
         print(points_df['source_dataset'].value_counts())
