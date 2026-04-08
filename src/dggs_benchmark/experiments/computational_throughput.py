@@ -20,10 +20,11 @@ class ComputationalThroughputExperiment:
     framework linearity out to 1M samples. Output is flushed to GeoParquet 
     to demonstrate out-of-core scalability constraints.
     """
-    def __init__(self, grids: List[BaseGrid], samples: int = 10000, seed: int = 42):
+    def __init__(self, grids: List[BaseGrid], samples: int = 10000, seed: int = 42, save_geometries: bool = False):
         self.grids = grids
         self.samples = samples
         self.seed = seed
+        self.save_geometries = save_geometries
 
     def _generate_fibonacci_sphere(self) -> List[Tuple[float, float]]:
         """Generates an evenly distributed set of lat/lon points on a sphere."""
@@ -58,72 +59,138 @@ class ComputationalThroughputExperiment:
             if resolution is None:
                 raise ValueError(f"Must provide a resolution mapping for {grid.name}")
             
-            # To ensure fairness, we can track total time over the loop
-            # and average it out, rather than storing noisy perf_counter per-point,
-            # but storing per-point proves full scalability. We'll store per-point.
-            
-            for index, (lat, lon) in enumerate(points):
-                # 1. Encoding Latency
-                t0 = time.perf_counter()
-                try:
-                    cell_id = grid.encode_point(lat, lon, resolution)
-                    encode_t = time.perf_counter() - t0
-                    success = True
-                except Exception as e:
-                    encode_t = time.perf_counter() - t0
-                    success = False
-                    cell_id = "FAIL"
-                    
-                decode_t = 0.0
-                kring_t = 0.0
-                parent_t = 0.0
-                poly = None
-                parent_id = None
+            # --- MACRO AGGREGATION MODE (>100k points) ---
+            # Prevents OOM-Killer by avoiding 60 Million instantiated Python Dictionaries and Shapely Points
+            if self.samples >= 100000:
+                success_count = 0
                 
-                if success:
-                    # 2. Decoding Latency
-                    t0 = time.perf_counter()
+                # 1. Encoding Latency (Tight Loop)
+                t0 = time.perf_counter()
+                encoded_ids = []
+                for lat, lon in points:
                     try:
-                        poly = grid.get_cell_polygon(cell_id)
-                        decode_t = time.perf_counter() - t0
+                        encoded_ids.append(grid.encode_point(lat, lon, resolution))
+                        success_count += 1
                     except Exception:
-                        decode_t = time.perf_counter() - t0
-                        
-                    # 3. Traversal Latency (k=1)
-                    t0 = time.perf_counter()
-                    try:
-                        _ = grid.get_k_ring(cell_id, k=1)
-                        kring_t = time.perf_counter() - t0
-                    except Exception:
-                        kring_t = time.perf_counter() - t0
-                        
-                    # 4. Parent / Aperture Aggregation Latency
-                    t0 = time.perf_counter()
-                    try:
-                        parent_id = grid.get_parent(cell_id)
-                        parent_t = time.perf_counter() - t0
-                    except NotImplementedError:
-                        parent_t = 0.0 # Grid naturally lacks hierarchical aggregation
-                        parent_id = "NOT_HIERARCHICAL"
-                    except Exception:
-                        parent_t = time.perf_counter() - t0
-                        parent_id = "FAIL"
-
+                        encoded_ids.append("FAIL")
+                encode_total = time.perf_counter() - t0
+                
+                # 2. Decoding Latency
+                t0 = time.perf_counter()
+                for cid in encoded_ids:
+                    if cid != "FAIL":
+                        try:
+                            grid.get_cell_polygon(cid)
+                        except Exception:
+                            pass
+                decode_total = time.perf_counter() - t0
+                
+                # 3. Traversal (k-ring) Latency
+                t0 = time.perf_counter()
+                for cid in encoded_ids:
+                    if cid != "FAIL":
+                        try:
+                            grid.get_k_ring(cid, k=1)
+                        except Exception:
+                            pass
+                kring_total = time.perf_counter() - t0
+                
+                # 4. Hierarchical (Parent) Latency
+                t0 = time.perf_counter()
+                for cid in encoded_ids:
+                    if cid != "FAIL":
+                        try:
+                            grid.get_parent(cid)
+                        except NotImplementedError:
+                            pass
+                        except Exception:
+                            pass
+                parent_total = time.perf_counter() - t0
+                
                 results.append({
                     "grid_name": grid.name,
-                    "point_id": index,
-                    "target_lat": lat,
-                    "target_lon": lon,
-                    "cell_id": str(cell_id),
-                    "parent_id": str(parent_id) if parent_id is not None else None,
-                    "encode_sec": encode_t,
-                    "decode_sec": decode_t,
-                    "kring_sec": kring_t,
-                    "parent_sec": parent_t,
-                    "success": success,
-                    "geometry": poly
+                    "resolution": resolution,
+                    "samples": self.samples,
+                    "encode_sec": encode_total,
+                    "decode_sec": decode_total,
+                    "kring_sec": kring_total,
+                    "parent_sec": parent_total,
+                    "throughput_p_sec": self.samples / max(0.001, encode_total),
+                    "success_rate": (success_count / self.samples) * 100
                 })
+
+            else:
+                # --- MICRO-PROFILING MODE (<100k points) ---
+                # Retains exact point-by-point variances for standard deviation boxplots
+                for index, (lat, lon) in enumerate(points):
+                    t0 = time.perf_counter()
+                    try:
+                        cell_id = grid.encode_point(lat, lon, resolution)
+                        encode_t = time.perf_counter() - t0
+                        success = True
+                    except Exception as e:
+                        encode_t = time.perf_counter() - t0
+                        success = False
+                        cell_id = "FAIL"
+                        
+                    decode_t = 0.0
+                    kring_t = 0.0
+                    parent_t = 0.0
+                    poly = None
+                    parent_id = None
+                    
+                    if success:
+                        t0 = time.perf_counter()
+                        try:
+                            poly = grid.get_cell_polygon(cell_id)
+                            decode_t = time.perf_counter() - t0
+                        except Exception:
+                            decode_t = time.perf_counter() - t0
+                            
+                        t0 = time.perf_counter()
+                        try:
+                            _ = grid.get_k_ring(cell_id, k=1)
+                            kring_t = time.perf_counter() - t0
+                        except Exception:
+                            kring_t = time.perf_counter() - t0
+                            
+                        t0 = time.perf_counter()
+                        try:
+                            parent_id = grid.get_parent(cell_id)
+                            parent_t = time.perf_counter() - t0
+                        except NotImplementedError:
+                            parent_t = 0.0 
+                            parent_id = "NOT_HIERARCHICAL"
+                        except Exception:
+                            parent_t = time.perf_counter() - t0
+                            parent_id = "FAIL"
+    
+                    record = {
+                        "grid_name": grid.name,
+                        "point_id": index,
+                        "target_lat": lat,
+                        "target_lon": lon,
+                        "cell_id": str(cell_id),
+                        "parent_id": str(parent_id) if parent_id is not None else None,
+                        "encode_sec": encode_t,
+                        "decode_sec": decode_t,
+                        "kring_sec": kring_t,
+                        "parent_sec": parent_t,
+                        "success": success
+                    }
+                    
+                    if self.save_geometries and poly is not None:
+                        record["geometry"] = poly
+                        
+                    results.append(record)
                 
         df = pd.DataFrame(results)
-        gdf = gpd.GeoDataFrame(df, geometry="geometry", crs="EPSG:4326")
-        return gdf
+        
+        # Only inject Geopandas spatial wrapper if we actually saved per-point properties
+        if self.samples < 100000:
+            if self.save_geometries and "geometry" in df.columns:
+                return gpd.GeoDataFrame(df, geometry="geometry", crs="EPSG:4326")
+            else:
+                return gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.target_lon, df.target_lat), crs="EPSG:4326")
+        
+        return df
