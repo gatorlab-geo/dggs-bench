@@ -461,8 +461,8 @@ Grid Selection:
         "experiment", choices=["geometric-distortion", "topological-resilience", "computational-throughput", "relational-throughput"], help="The experiment to execute"
     )
     run_parser.add_argument(
-        "--samples", type=int, default=10000,
-        help="Number of Fibonacci sphere sample points (default: 10000)"
+        "--samples", type=int, default=None,
+        help="Number of points. Defaults to dynamically matching the full local Parquet cache if available, or 10000 if generating synthetically."
     )
     run_parser.add_argument(
         "--seed", type=int, default=42,
@@ -519,6 +519,11 @@ Grid Selection:
     args = parser.parse_args()
 
     if args.command == "run":
+        if args.samples is None:
+            # Automatically default to 10000 if not using dynamic sizing over real-world data caches
+            if args.experiment != "relational-throughput" or getattr(args, "point_distribution", "") != "real":
+                args.samples = 10000
+
         if args.experiment == "geometric-distortion":
             run_geometric_distortion(args)
         elif args.experiment == "topological-resilience":

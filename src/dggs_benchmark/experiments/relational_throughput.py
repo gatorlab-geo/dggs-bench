@@ -17,7 +17,7 @@ class RelationalThroughputExperiment:
     Joins (ST_Intersects) in DuckDB using Natural Earth countries. Sweeps across
     multiple DGGS resolutions to identify the exact ROI Break-Even point.
     """
-    def __init__(self, grids: List[BaseGrid], samples: int, seed: int = 42, scale: str = "macro", save_geometries: bool = False, output_dir: str = "", distribution: str = "real", max_covering_sec: int = 1800):
+    def __init__(self, grids: List[BaseGrid], samples: int = None, seed: int = 42, scale: str = "macro", save_geometries: bool = False, output_dir: str = "", distribution: str = "real", max_covering_sec: int = 1800):
         self.grids = grids
         self.samples = samples
         self.seed = seed
@@ -186,12 +186,19 @@ class RelationalThroughputExperiment:
             points_df['id'] = points_df.index
             points_df.to_parquet(places_path)
             
+        # Dynamically auto-detect test size identically to whatever cache footprint exists
+        if self.samples is None:
+            self.samples = len(points_df)
+            print(f"  -> Dynamic Master Auto-Scale: Successfully detected and inherited exactly {self.samples} real-world POI targets!")
+            
         print(f"  -> Local Master Cache contains {len(points_df)} points.")
         if len(points_df) > self.samples:
             print(f"  -> Target samples parameter is {self.samples}. Dynamically truncating geometry pool for this test sweep...")
             points_df = points_df.head(self.samples)
         elif len(points_df) < self.samples:
             print(f"  [Warning] You requested {self.samples} points, but the cache only has {len(points_df)}! Running with {len(points_df)} available points.")
+            # Auto-balance the parameter so metadata output accuracy isn't skewed mathematically bounds
+            self.samples = len(points_df)
             
         print(f"  Data Source Distribution:")
         print(points_df['source_dataset'].value_counts())
