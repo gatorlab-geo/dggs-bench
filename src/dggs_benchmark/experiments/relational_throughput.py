@@ -407,7 +407,7 @@ class RelationalThroughputExperiment:
                     continue
                 
                 # 3. Relational Reward (DuckDB Join)
-                clean_name = grid.name.replace(' ', '_').replace('(', '').replace(')', '').replace(':', '_')
+                clean_name = grid.name.replace(' ', '_').replace('(', '').replace(')', '').replace(':', '_').replace('/', '_').replace('-', '_')
                 try:
                     test_val = point_ids[0]
                     sql_type = "UBIGINT" if isinstance(test_val, int) else "VARCHAR"
