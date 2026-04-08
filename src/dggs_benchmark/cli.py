@@ -236,10 +236,10 @@ def run_download_data(args):
     experiment.scale = "micro"
     experiment._load_study_areas()
     
-    print(f"\n[4/4] Downloading Overture Maps Buildings ({args.samples} Points)...")
+    print(f"\n[4/4] Downloading Foursquare OS Places ({args.samples} Points)...")
     experiment.distribution = "real"
     experiment.samples = args.samples
-    experiment._load_overture_buildings()
+    experiment._load_foursquare_places()
     
     print("\n[Success] All testing datasets successfully cached to project data/ directory!")
 
@@ -486,7 +486,7 @@ Grid Selection:
     )
     run_parser.add_argument(
         "--point-distribution", type=str, choices=["uniform", "real", "urban_synthetic"], default="real",
-        help="Use 'uniform' for Fibonacci sphere. Use 'real' for Overture Maps S3 records. Use 'urban_synthetic' for 0.05sec clustered mega-city models."
+        help="Use 'uniform' for Fibonacci sphere. Use 'real' for Foursquare OS Places Iceberg. Use 'urban_synthetic' for 0.05sec clustered mega-city models."
     )
 
     # -- generate-points ----------------------------------------------------
@@ -498,7 +498,7 @@ Grid Selection:
 
     # -- download-data ------------------------------------------------------
     download_parser = subparsers.add_parser("download-data", help="Pre-download mapping data for offline/standalone execution.")
-    download_parser.add_argument("--samples", type=int, default=10000000, help="Number of Overture Maps records to cache.")
+    download_parser.add_argument("--samples", type=int, default=10000000, help="Number of Foursquare OS Places records to cache.")
 
     # -- list ---------------------------------------------------------------
     subparsers.add_parser("list", help="List all available grid aliases")
