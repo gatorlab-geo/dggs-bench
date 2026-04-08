@@ -125,7 +125,8 @@ class RelationalThroughputExperiment:
             fsq_token = os.environ.get('FSQ_ACCESS_TOKEN', 'YOUR_ACCESS_TOKEN_HERE')
             
             if fsq_token == 'YOUR_ACCESS_TOKEN_HERE':
-                raise ValueError(
+                import sys
+                sys.exit(
                     "\n\n[AUTHENTICATION REQUIRED]\n"
                     "To download Foursquare OS Places, you must generate a free Access Token.\n"
                     "1. Visit the Foursquare Places Portal and generate an Iceberg Token.\n"
