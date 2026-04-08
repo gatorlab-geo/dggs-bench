@@ -34,7 +34,7 @@ class RelationalThroughputExperiment:
         elif self.distribution == "urban_synthetic":
             return self._generate_urban_synthetic()
         else:
-            return self._load_overture_buildings()
+            return self._load_foursquare_places()
 
     def _generate_urban_synthetic(self) -> pd.DataFrame:
         print(f"  Generating {self.samples} massively clustered 'real-world' urban points (Synthetic Gaussian)...")
@@ -91,95 +91,91 @@ class RelationalThroughputExperiment:
         df = pd.DataFrame(points)
         return df
 
-    def _load_overture_buildings(self) -> pd.DataFrame:
+    def _load_foursquare_places(self) -> pd.DataFrame:
+        """
+        Extracts massive real-world global POIs using Foursquare's Apache Iceberg Catalog.
+        Note: Due to Foursquare's Terms of Service, executing this requires generating a free Access Token
+        from the Foursquare Places Portal (https://location.foursquare.com/developer/reference/places-api-overview).
+        """
         from pathlib import Path
+        import os
+        
         project_root = Path(__file__).resolve().parents[3]
-        data_dir = project_root / 'data' / 'overture'
+        data_dir = project_root / 'data' / 'foursquare'
         data_dir.mkdir(parents=True, exist_ok=True)
         
-        overture_path = data_dir / f'overture_buildings_{self.samples}.parquet'
+        places_path = data_dir / f'foursquare_places_{self.samples}.parquet'
         
-        print(f"  Loading {self.samples} Real-world Overture Building Centroids...")
+        print(f"  Loading {self.samples} Real-world Foursquare Places...")
         valid_parquet = False
-        if overture_path.exists():
+        if places_path.exists():
             try:
-                # Test validity of the buffer (Avoids PyArrow crash if file was touched but left empty by Ctrl+C)
-                points_df = pd.read_parquet(overture_path)
+                # Test validity of the buffer
+                points_df = pd.read_parquet(places_path)
                 valid_parquet = True
             except Exception:
-                print("  [Warning] Existing Overture parquet file is corrupted/empty (likely from an aborted run). Repairing...")
-                overture_path.unlink()
+                print("  [Warning] Existing Foursquare parquet file is corrupted/empty. Repairing...")
+                places_path.unlink()
                 
         if not valid_parquet:
-            print("  Downloading Overture Maps Buildings directly from Amazon S3 (this happens once)...")
-            self.con.execute("INSTALL httpfs; LOAD httpfs;")
-            self.con.execute("SET s3_region = 'us-west-2';")
+            print("  Downloading Foursquare OS Places directly from Apache Iceberg (this happens once)...")
             
-            import boto3
-            from botocore import UNSIGNED
-            from botocore.config import Config
-            import random
+            # --- AUTHENTICATION REQUIRED ---
+            fsq_token = os.environ.get('FSQ_ACCESS_TOKEN', 'YOUR_ACCESS_TOKEN_HERE')
+            
+            if fsq_token == 'YOUR_ACCESS_TOKEN_HERE':
+                raise ValueError(
+                    "\n\n[AUTHENTICATION REQUIRED]\n"
+                    "To download Foursquare OS Places, you must generate a free Access Token.\n"
+                    "1. Visit the Foursquare Places Portal and generate an Iceberg Token.\n"
+                    "2. Run the command with: FSQ_ACCESS_TOKEN='your_token_here' dggs-bench run ...\n"
+                    "Alternatively, use '--point-distribution urban_synthetic' to bypass login!\n"
+                )
 
-            print("    -> Fetching Overture Partition Dictionary from AWS S3 (Instant Boto3 Metadata)...")
-            s3 = boto3.client('s3', region_name='us-west-2', config=Config(signature_version=UNSIGNED))
+            self.con.execute("INSTALL httpfs; LOAD httpfs;")
+            self.con.execute("INSTALL iceberg; LOAD iceberg;")
             
-            # Fetch ALL file keys quickly
-            paginator = s3.get_paginator('list_objects_v2')
-            pages = paginator.paginate(Bucket='overturemaps-us-west-2', Prefix='release/2026-03-18.0/theme=buildings/type=building/')
+            # Attach Iceberg Secret
+            self.con.execute(f"""
+            CREATE SECRET iceberg_secret (
+                TYPE ICEBERG,
+                TOKEN '{fsq_token}'
+            );
+            """)
             
-            parquet_files = []
-            for page in pages:
-                for obj in page.get('Contents', []):
-                    if obj['Key'].endswith('.parquet'):
-                        parquet_files.append(f"s3://overturemaps-us-west-2/{obj['Key']}")
+            # Mount the native Iceberg Cloud Catalog directly
+            self.con.execute("""
+            ATTACH 'places' AS places (
+                TYPE iceberg,
+                SECRET iceberg_secret,
+                ENDPOINT 'https://catalog.h3-hub.foursquare.com/iceberg'
+            );
+            """)
             
-            # STRICT GLOBAL RANDOMIZATION
-            random.seed(self.seed)
-            random.shuffle(parquet_files)
+            print(f"    -> Iceberg Catalog mounted! Dynamically fetching {self.samples:,} random points natively...")
             
-            per_file_limit = self.samples // len(parquet_files)
-            remainder = self.samples % len(parquet_files)
-            
-            print(f"    -> Successfully mapped {len(parquet_files)} global Parquet partitions! Extracting exactly {per_file_limit:,} buildings from EACH partition to guarantee 100% global distribution...")
-            
-            dfs = []
-            current_count = 0
-            
-            for i, url in enumerate(parquet_files):
-                if i % 25 == 0:
-                    print(f"      [Progress:] Processed {i}/{len(parquet_files)} global data buckets...")
-                    
-                # The first file absorbs the mathematical remainder to hit the limit exactly
-                limit = per_file_limit + (remainder if i == 0 else 0)
-                
-                query = f"""
+            # Because Iceberg natively provides metadata manifests, DuckDB can randomly sample the EXACT coordinates
+            # globally without waiting for 40-minute S3 wildcards or manually shuffling via Python APIs.
+            query = f"""
+                COPY (
                     SELECT 
-                        CAST(ST_Y(ST_Centroid(geometry)) AS DOUBLE) AS lat, 
-                        CAST(ST_X(ST_Centroid(geometry)) AS DOUBLE) AS lon, 
-                        sources[1].dataset AS source_dataset
-                    FROM read_parquet('{url}', filename=true)
-                    LIMIT {limit}
-                """
-                
-                # Pull directly into Pandas to release DuckDB RAM immediately
-                try:
-                    df_part = self.con.execute(query).df()
-                    dfs.append(df_part)
-                except Exception as e:
-                    print(f"      [Warning] Skipping partition {i} due to Error: {e}")
-                
-            print("    -> S3 Extraction complete. Assembling perfectly distributed global dataset...")
-            merged_df = pd.concat(dfs, ignore_index=True)
+                        latitude AS lat, 
+                        longitude AS lon, 
+                        'foursquare_os' AS source_dataset
+                    FROM places.datasets.places_os
+                    ORDER BY random()
+                    LIMIT {self.samples}
+                ) TO '{places_path}' (FORMAT PARQUET)
+            """
             
-            # Slice down perfectly to the mathematically required benchmarks constraints
-            merged_df = merged_df.iloc[:self.samples]
+            self.con.execute(query)
             
-            # Shuffle strictly in python and assign sequential IDs for R-Tree JOIN requirements
-            merged_df = merged_df.sample(frac=1, random_state=self.seed).reset_index(drop=True)
-            merged_df['id'] = merged_df.index
+            # Read back local fast index
+            points_df = pd.read_parquet(places_path)
             
-            merged_df.to_parquet(overture_path)
-            points_df = merged_df
+            # Assign sequential IDs required for R-Tree JOIN tests
+            points_df['id'] = points_df.index
+            points_df.to_parquet(places_path)
             
         print(f"  Data Source Distribution:")
         print(points_df['source_dataset'].value_counts())
