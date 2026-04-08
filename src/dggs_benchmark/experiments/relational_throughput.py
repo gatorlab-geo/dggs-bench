@@ -186,6 +186,19 @@ class RelationalThroughputExperiment:
             points_df['id'] = points_df.index
             points_df.to_parquet(places_path)
             
+        # Read back local fast index
+        points_df = pd.read_parquet(places_path)
+            
+        # --- Strict Geodetic Validation Shield ---
+        # Foursquare and raw open-source POI dumps commonly contain rogue GPS artifacts (NaNs or Latitudes > 90.0).
+        # While DuckDB ST_Point ignores these naturally, strict spherical DGGS encoders (H3/S2 C++ extensions) 
+        # instantly crash with blank exceptions when fed impossible geometries.
+        points_df = points_df.dropna(subset=['lat', 'lon'])
+        points_df = points_df[
+            (points_df['lat'] >= -90) & (points_df['lat'] <= 90) &
+            (points_df['lon'] >= -180) & (points_df['lon'] <= 180)
+        ]
+        
         # Dynamically auto-detect test size identically to whatever cache footprint exists
         if self.samples is None:
             self.samples = len(points_df)
