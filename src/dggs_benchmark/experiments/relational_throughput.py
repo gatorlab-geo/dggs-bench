@@ -445,6 +445,18 @@ class RelationalThroughputExperiment:
                             
                 except Exception as e:
                     print(f"    [Error] Join failed: {e}")
+                    
+                # --- AUTO-BAILOUT HEURISTIC ---
+                # Since DGGS grid hierarchies scale exponentially (e.g., S2 splits into 4, rHEALPix splits into 9),
+                # the Covering Time scales strictly linearly with the number of cells generated.
+                # If the current resolution covering took > 1800 seconds (30 minutes), the NEXT resolution layer
+                # will mathematically take at minimum (30 * 4 = 2 hours), and up to (30 * 9 = 4.5 hours)!
+                # We skip deeper resolutions to prevent single-grid lockups destroying overnight multi-scale runs.
+                if covering_sec > 1800:
+                    print(f"\n    [Safeguard Triggered] Covering loop hit {covering_sec:.1f}s!")
+                    print(f"    -> Mathematically predicting the next resolution will exceed safe execution limits (>2-5 hours).")
+                    print(f"    -> Dynamically skipping remaining deeper resolutions for {grid.name} to preserve benchmark timeline.\n")
+                    break
 
         df_res = pd.DataFrame(results)
         return df_res
