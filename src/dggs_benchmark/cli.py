@@ -159,7 +159,16 @@ def run_relational_throughput(args):
     grids, resolutions = _instantiate_grids(selected)
     
     print(f"--- Initializing Relational Throughput Benchmark (ID-Joins) [{args.scale.upper()} SCALE] ---")
-    experiment = RelationalThroughputExperiment(grids=grids, samples=args.samples, seed=args.seed, scale=args.scale, save_geometries=args.save_geometries, output_dir=args.output_dir, distribution=args.point_distribution)
+    experiment = RelationalThroughputExperiment(
+        grids=grids, 
+        samples=args.samples, 
+        seed=args.seed, 
+        scale=args.scale, 
+        save_geometries=args.save_geometries, 
+        output_dir=args.output_dir, 
+        distribution=args.point_distribution,
+        max_covering_sec=args.max_covering_sec
+    )
 
     print(f"Executing over {len(grids)} grids with {args.samples} samples...")
     # Define the ROI Sweep resolutions for the paper (Dense Sweep for smooth plotting)
@@ -487,6 +496,10 @@ Grid Selection:
     run_parser.add_argument(
         "--point-distribution", type=str, choices=["uniform", "real", "urban_synthetic"], default="real",
         help="Use 'uniform' for Fibonacci sphere. Use 'real' for Foursquare OS Places Iceberg. Use 'urban_synthetic' for 0.05sec clustered mega-city models."
+    )
+    run_parser.add_argument(
+        "--max-covering-sec", type=int, default=1800,
+        help="Timeout heuristic (seconds) for the Covering Phase. If an execution exceeds this, deeper resolutions are skipped dynamically. (default: 1800)"
     )
 
     # -- generate-points ----------------------------------------------------

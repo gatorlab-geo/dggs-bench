@@ -17,14 +17,15 @@ class RelationalThroughputExperiment:
     Joins (ST_Intersects) in DuckDB using Natural Earth countries. Sweeps across
     multiple DGGS resolutions to identify the exact ROI Break-Even point.
     """
-    def __init__(self, grids: List[BaseGrid], samples: int = 100000, seed: int = 42, scale: str = "macro", save_geometries: bool = False, output_dir: str = "data/processed", distribution: str = "real"):
+    def __init__(self, grids: List[BaseGrid], samples: int, seed: int = 42, scale: str = "macro", save_geometries: bool = False, output_dir: str = "", distribution: str = "real", max_covering_sec: int = 1800):
         self.grids = grids
         self.samples = samples
         self.seed = seed
         self.scale = scale
         self.save_geometries = save_geometries
-        self.output_dir = output_dir
+        self.output_dir = output_dir if output_dir else "data/fixed"
         self.distribution = distribution
+        self.max_covering_sec = max_covering_sec
         self.con = duckdb.connect(database=':memory:')
         self.con.execute("INSTALL spatial; LOAD spatial;")
 
@@ -449,12 +450,12 @@ class RelationalThroughputExperiment:
                 # --- AUTO-BAILOUT HEURISTIC ---
                 # Since DGGS grid hierarchies scale exponentially (e.g., S2 splits into 4, rHEALPix splits into 9),
                 # the Covering Time scales strictly linearly with the number of cells generated.
-                # If the current resolution covering took > 1800 seconds (30 minutes), the NEXT resolution layer
-                # will mathematically take at minimum (30 * 4 = 2 hours), and up to (30 * 9 = 4.5 hours)!
+                # If the current resolution covering hit the safety ceiling, the NEXT resolution layer
+                # will mathematically multiply that time up to 9x!
                 # We skip deeper resolutions to prevent single-grid lockups destroying overnight multi-scale runs.
-                if covering_sec > 1800:
-                    print(f"\n    [Safeguard Triggered] Covering loop hit {covering_sec:.1f}s!")
-                    print(f"    -> Mathematically predicting the next resolution will exceed safe execution limits (>2-5 hours).")
+                if covering_sec > self.max_covering_sec:
+                    print(f"\n    [Safeguard Triggered] Covering loop hit {covering_sec:.1f}s (Threshold: {self.max_covering_sec}s)!")
+                    print(f"    -> Mathematically predicting the next resolution will comprehensively exceed safe execution limits.")
                     print(f"    -> Dynamically skipping remaining deeper resolutions for {grid.name} to preserve benchmark timeline.\n")
                     break
 
