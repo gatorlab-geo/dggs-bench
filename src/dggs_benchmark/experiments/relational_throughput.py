@@ -107,6 +107,13 @@ class RelationalThroughputExperiment:
         
         places_path = data_dir / 'foursquare_places_master.parquet'
         
+        # Gracefully upgrade any legacy numbered parquet extractions into the new master cache directly
+        if not places_path.exists():
+            legacy_caches = list(data_dir.glob("foursquare_places_*.parquet"))
+            if legacy_caches:
+                print(f"  [Auto-Upgrade] Found previous cache: {legacy_caches[0].name}. Upgrading to unified Master Cache...")
+                legacy_caches[0].rename(places_path)
+        
         print(f"  Checking for Local Master Cache: Foursquare Places...")
         valid_parquet = False
         if places_path.exists():
