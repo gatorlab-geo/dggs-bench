@@ -207,19 +207,20 @@ def run_relational_throughput(args):
     # Output
     os.makedirs(args.output_dir, exist_ok=True)
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    out_file = os.path.join(args.output_dir, f"relational_throughput_{timestamp}.csv")
+    out_file = os.path.join(args.output_dir, f"relational_throughput_{args.scale}_{timestamp}.csv")
     df.to_csv(out_file, index=False)
     print(f"\n[Success] Throughput results saved to: {out_file}")
 
     # Save provenance metadata
     metadata = {
         "experiment": "Relational Throughput",
+        "scale": args.scale,
         "samples": args.samples,
         "seed": args.seed,
         "timestamp": timestamp,
         "output_file": out_file,
     }
-    meta_file = os.path.join(args.output_dir, f"metadata_roi_{timestamp}.json")
+    meta_file = os.path.join(args.output_dir, f"metadata_roi_{args.scale}_{timestamp}.json")
     with open(meta_file, "w") as f:
         json.dump(metadata, f, indent=4)
     print(f"[Success] Provenance Metadata saved to: {meta_file}")
