@@ -9,7 +9,7 @@ set -e
 
 # Target geometry limits (3 Runs = Seed 42, 43, 44)
 SEEDS=(42 43 44)
-GRIDS="h3,s2,isea3h,rhealpix,geohash,xyz"
+GRIDS="h3,s2,rhealpix,xyz"
 SCALES=("macro" "macro-10m" "macro-europe" "micro")
 
 echo "=============================================================================="

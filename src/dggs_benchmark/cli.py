@@ -185,6 +185,8 @@ def run_relational_throughput(args):
                 sweep_resolutions[grid.name] = [16, 17, 18, 19, 20]
             elif "Geohash" in grid.name:
                 sweep_resolutions[grid.name] = [6, 7]
+            elif "XYZ" in grid.name:
+                sweep_resolutions[grid.name] = [13, 14, 15, 16, 17]
             else:
                 sweep_resolutions[grid.name] = [resolutions[grid.name]]
         else: # "macro", "macro-10m", "macro-europe"
@@ -198,6 +200,8 @@ def run_relational_throughput(args):
                 sweep_resolutions[grid.name] = [10, 11, 12, 13, 14, 15, 16]
             elif "Geohash" in grid.name:
                 sweep_resolutions[grid.name] = [4, 5, 6]
+            elif "XYZ" in grid.name:
+                sweep_resolutions[grid.name] = [8, 9, 10, 11, 12]
             else:
                 sweep_resolutions[grid.name] = [resolutions[grid.name]]
 
