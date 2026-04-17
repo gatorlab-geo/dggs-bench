@@ -346,7 +346,7 @@ def run_computational_throughput(args):
 
     print("--- Initializing Computational Throughput Benchmark ---")
     print(f"  Grids selected: {', '.join(selected)}")
-    experiment = ComputationalThroughputExperiment(grids=grids, samples=args.samples, seed=args.seed)
+    experiment = ComputationalThroughputExperiment(grids=grids, samples=args.samples, seed=args.seed, save_geometries=args.save_geometries)
 
     print(f"Executing over {len(grids)} grids with {args.samples} samples...")
     gdf = experiment.run(resolutions=resolutions)

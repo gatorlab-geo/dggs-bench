@@ -39,13 +39,15 @@ class XYZTileGrid(BaseGrid):
         """
         Encodes a WGS84 coordinate into an XYZ tile ID string "{z}/{x}/{y}".
 
-        :param lat:        WGS84 latitude  (clamped to ±85.051129° by mercantile)
+        :param lat:        WGS84 latitude  (must be within ±85.051129°)
         :param lon:        WGS84 longitude (-180 … 180)
         :param resolution: Zoom level Z (integer, typically 0–22)
         :returns:          Tile ID string, e.g. "13/2412/3080"
         """
-        # Clamp to valid Mercator latitude range — poles are undefined in Web Mercator
-        lat = max(-85.051129, min(85.051129, lat))
+        # Strictly reject invalid Mercator latitude range — poles are undefined in Web Mercator
+        if lat > 85.05112878 or lat < -85.05112878:
+            raise ValueError(f"Latitude {lat:.4f} is mathematically outside standard XYZ Tile Slippy Map bounding limits.")
+        
         tile = mercantile.tile(lon, lat, resolution)
         return f"{tile.z}/{tile.x}/{tile.y}"
 

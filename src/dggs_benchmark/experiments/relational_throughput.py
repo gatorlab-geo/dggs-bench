@@ -311,7 +311,7 @@ class RelationalThroughputExperiment:
         """
         # 1. Heuristic resolution step (higher res = tighter mesh)
         # E.g., Res 2 => ~6 degrees apart. Res 6 => ~0.4 degrees apart.
-        step_degrees = max(0.01, 15.0 / (1.6 ** res)) 
+        step_degrees = max(0.0001, 15.0 / (1.6 ** res)) 
         
         cells = set()
         
@@ -454,6 +454,7 @@ class RelationalThroughputExperiment:
                         "covering_sec": covering_sec,
                         "join_sec": join_sec,
                         "total_sec": ingestion_sec + join_sec,
+                        "vector_join_sec": vector_join_sec,
                         "count": count_dggs,
                         "vector_count": count_vec,
                         "accuracy_pct": (count_dggs / max(1, count_vec)) * 100
