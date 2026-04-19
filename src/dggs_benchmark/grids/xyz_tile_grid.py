@@ -44,9 +44,12 @@ class XYZTileGrid(BaseGrid):
         :param resolution: Zoom level Z (integer, typically 0–22)
         :returns:          Tile ID string, e.g. "13/2412/3080"
         """
-        # Strictly reject invalid Mercator latitude range — poles are undefined in Web Mercator
+        # Web Mercator is undefined beyond ±85.051129° — reject polar coordinates.
+        # Experiments that expect polar points should catch this per-point.
         if lat > 85.05112878 or lat < -85.05112878:
-            raise ValueError(f"Latitude {lat:.4f} is mathematically outside standard XYZ Tile Slippy Map bounding limits.")
+            raise ValueError(
+                f"Latitude {lat:.4f} is outside the Web Mercator range (±85.05°)."
+            )
         
         tile = mercantile.tile(lon, lat, resolution)
         return f"{tile.z}/{tile.x}/{tile.y}"
@@ -122,6 +125,28 @@ class XYZTileGrid(BaseGrid):
 
     def get_covering(self, polygon: Polygon, resolution: int) -> List[str]:
         """
-        Returns all XYZ tiles covering the given polygon.
+        Returns all XYZ tiles covering the given polygon at the specified zoom level.
+
+        Uses mercantile.tiles() to enumerate all tiles within the polygon's bounding
+        box, then filters to those that actually intersect the polygon geometry.
         """
-        raise NotImplementedError("XYZ get_covering is not yet implemented.")
+        from shapely.geometry import box
+        from shapely.prepared import prep
+
+        bounds = polygon.bounds  # (minx, miny, maxx, maxy) = (west, south, east, north)
+        # Clamp to Mercator latitude limits
+        south = max(bounds[1], -85.05112878)
+        north = min(bounds[3],  85.05112878)
+
+        if south >= north:
+            return []
+
+        prepared_poly = prep(polygon)
+        cells = []
+        for tile in mercantile.tiles(bounds[0], south, bounds[2], north, zooms=resolution):
+            tb = mercantile.bounds(tile)
+            tile_box = box(tb.west, tb.south, tb.east, tb.north)
+            if prepared_poly.intersects(tile_box):
+                cells.append(f"{tile.z}/{tile.x}/{tile.y}")
+
+        return cells

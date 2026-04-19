@@ -377,12 +377,19 @@ class RelationalThroughputExperiment:
                 
                 # 1. Ingestion Tax (Encoding the Globe)
                 t0 = time.perf_counter()
-                try:
-                    point_ids = points_df.apply(lambda row: grid.encode_point(row['lat'], row['lon'], res), axis=1).tolist()
-                    ingestion_sec = time.perf_counter() - t0
-                except Exception as e:
-                    print(f"    [Error] Encoding failed: {e}")
+                def _safe_encode(row):
+                    try:
+                        return grid.encode_point(row['lat'], row['lon'], res)
+                    except (ValueError, Exception):
+                        return None
+                point_ids = points_df.apply(_safe_encode, axis=1).tolist()
+                ingestion_sec = time.perf_counter() - t0
+                n_failed = point_ids.count(None)
+                if n_failed == len(point_ids):
+                    print(f"    [Error] All {n_failed} points failed encoding — skipping.")
                     continue
+                if n_failed > 0:
+                    print(f"    [Note] {n_failed}/{len(point_ids)} points outside grid bounds — excluded from join.")
                 
                 # 2. Covering Speed (Chopping the Countries)
                 t0 = time.perf_counter()
@@ -409,7 +416,7 @@ class RelationalThroughputExperiment:
                 # 3. Relational Reward (DuckDB Join)
                 clean_name = grid.name.replace(' ', '_').replace('(', '').replace(')', '').replace(':', '_').replace('/', '_').replace('-', '_')
                 try:
-                    test_val = point_ids[0]
+                    test_val = next((v for v in point_ids if v is not None), "")
                     sql_type = "UBIGINT" if isinstance(test_val, int) else "VARCHAR"
                     
                     ids_df = pd.DataFrame({'id': points_df['id'], 'cell_id': point_ids})
