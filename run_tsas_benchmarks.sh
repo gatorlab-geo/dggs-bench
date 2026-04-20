@@ -53,7 +53,7 @@ for iteration in 1 2 3; do
     echo "--> [1/5] Computational Throughput (1M points)..."
     dggs-bench run computational-throughput \
         --grids $GRIDS \
-        --samples 1000000 \
+        --samples 10000000 \
         --seed $SEED \
         --output-dir "$OUTDIR" \
         --output-format csv
