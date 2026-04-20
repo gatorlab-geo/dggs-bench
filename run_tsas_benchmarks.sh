@@ -18,7 +18,7 @@
 set -e
 
 SEEDS=(42 43 44)
-GRIDS="isea4h,geohash"
+GRIDS="h3,s2,rhealpix,isea4h,geohash,xyz"
 SCALES=("macro" "macro-10m" "macro-europe" "micro")
 OUT_BASE="data/tsas_v1"
 
