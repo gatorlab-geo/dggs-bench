@@ -3,8 +3,15 @@ import math
 import random
 import pandas as pd
 import geopandas as gpd
+import psutil
+import os
+import resource
 from typing import List, Tuple
 from ..grids.base import BaseGrid
+
+def _get_rss_mb() -> float:
+    """Return current process Resident Set Size in MB."""
+    return psutil.Process(os.getpid()).memory_info().rss / (1024 * 1024)
 
 class ComputationalThroughputExperiment:
     """
@@ -63,6 +70,8 @@ class ComputationalThroughputExperiment:
             # Prevents OOM-Killer by avoiding 60 Million instantiated Python Dictionaries and Shapely Points
             if self.samples >= 100000:
                 success_count = 0
+                rss_before = _get_rss_mb()
+                peak_before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024  # KB → MB on Linux
                 
                 # 1. Encoding Latency (Tight Loop)
                 t0 = time.perf_counter()
@@ -74,6 +83,7 @@ class ComputationalThroughputExperiment:
                     except Exception:
                         encoded_ids.append("FAIL")
                 encode_total = time.perf_counter() - t0
+                rss_after_encode = _get_rss_mb()
                 
                 # 2. Decoding Latency
                 t0 = time.perf_counter()
@@ -106,6 +116,11 @@ class ComputationalThroughputExperiment:
                         except Exception:
                             pass
                 parent_total = time.perf_counter() - t0
+                rss_after_all = _get_rss_mb()
+                peak_after = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
+                rss_peak_mb = peak_after  # kernel high-water mark
+                
+                print(f"  Memory: {rss_before:.1f} → {rss_after_encode:.1f} → {rss_after_all:.1f} MB (before/encode/all), peak={rss_peak_mb:.1f} MB")
                 
                 results.append({
                     "grid_name": grid.name,
@@ -116,12 +131,18 @@ class ComputationalThroughputExperiment:
                     "kring_sec": kring_total,
                     "parent_sec": parent_total,
                     "throughput_p_sec": self.samples / max(0.001, encode_total),
-                    "success_rate": (success_count / self.samples) * 100
+                    "success_rate": (success_count / self.samples) * 100,
+                    "rss_before_mb": rss_before,
+                    "rss_after_encode_mb": rss_after_encode,
+                    "rss_after_all_mb": rss_after_all,
+                    "rss_peak_mb": rss_peak_mb,
                 })
 
             else:
                 # --- MICRO-PROFILING MODE (<100k points) ---
                 # Retains exact point-by-point variances for standard deviation boxplots
+                rss_before = _get_rss_mb()
+                peak_before_micro = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
                 for index, (lat, lon) in enumerate(points):
                     t0 = time.perf_counter()
                     try:
@@ -183,6 +204,16 @@ class ComputationalThroughputExperiment:
                         record["geometry"] = poly
                         
                     results.append(record)
+                
+                # Record memory snapshot after all points for this grid
+                rss_after_all = _get_rss_mb()
+                rss_peak_mb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
+                print(f"  Memory: {rss_before:.1f} → {rss_after_all:.1f} MB, peak={rss_peak_mb:.1f} MB")
+                # Inject memory into the last record for this grid
+                if results:
+                    results[-1]['rss_before_mb'] = rss_before
+                    results[-1]['rss_after_all_mb'] = rss_after_all
+                    results[-1]['rss_peak_mb'] = rss_peak_mb
                 
         df = pd.DataFrame(results)
         

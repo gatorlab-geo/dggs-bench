@@ -45,6 +45,7 @@ def _build_registry():
     from dggs_benchmark.grids.a5_grid import A5Grid
     from dggs_benchmark.grids.qtm_grid import QTMGrid
     from dggs_benchmark.grids.isea3h_grid import ISEA3HGrid
+    from dggs_benchmark.grids.isea4h_grid import ISEA4HGrid
     from dggs_benchmark.grids.rhealpix_grid import RHEALPixGrid
     from dggs_benchmark.grids.utm_grid import UTMGrid
     from dggs_benchmark.grids.xyz_tile_grid import XYZTileGrid
@@ -58,6 +59,7 @@ def _build_registry():
         "a5":       (A5Grid,       15),    # Pentagon, approx 1 km²
         "qtm":      (QTMGrid,      15),    # Triangle, approx 1 km²
         "isea3h":   (ISEA3HGrid,   16),    # Hexagon, approx 1.18 km²
+        "isea4h":   (ISEA4HGrid,   12),    # Hexagon (Ap4), approx 3 km²
         "rhealpix": (RHEALPixGrid,  9),    # Equal-area squares
         "xyz":      (XYZTileGrid,  13),    # Zoom 13 ≈ 4.8 km equatorial edge
         "geohash":  (GeohashGrid,   6),    # Level 6 ≈ 1.2 km x 0.6 km
@@ -181,6 +183,8 @@ def run_relational_throughput(args):
                 sweep_resolutions[grid.name] = [13, 14, 15, 16]
             elif "rHEALPix" in grid.name:
                 sweep_resolutions[grid.name] = [8, 9, 10]
+            elif "ISEA4H" in grid.name:
+                sweep_resolutions[grid.name] = [10, 11, 12]
             elif "ISEA3H" in grid.name:
                 sweep_resolutions[grid.name] = [16, 17, 18, 19, 20]
             elif "Geohash" in grid.name:
@@ -196,6 +200,8 @@ def run_relational_throughput(args):
                 sweep_resolutions[grid.name] = [8, 9, 10, 11, 12, 13]
             elif "rHEALPix" in grid.name:
                 sweep_resolutions[grid.name] = [5, 6, 7, 8]
+            elif "ISEA4H" in grid.name:
+                sweep_resolutions[grid.name] = [6, 7, 8, 9, 10, 11, 12]
             elif "ISEA3H" in grid.name:
                 sweep_resolutions[grid.name] = [10, 11, 12, 13, 14, 15, 16]
             elif "Geohash" in grid.name:

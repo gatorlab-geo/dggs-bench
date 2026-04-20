@@ -8,6 +8,7 @@ from .rhealpix_grid import RHEALPixGrid
 from .utm_grid import UTMGrid
 from .xyz_tile_grid import XYZTileGrid
 from .geohash_grid import GeohashGrid
+from .isea4h_grid import ISEA4HGrid
 
-__all__ = ["BaseGrid", "H3Grid", "S2Grid", "MercatorGrid", "A5Grid", "QTMGrid", "RHEALPixGrid", "UTMGrid", "XYZTileGrid", "GeohashGrid"]
+__all__ = ["BaseGrid", "H3Grid", "S2Grid", "MercatorGrid", "A5Grid", "QTMGrid", "RHEALPixGrid", "UTMGrid", "XYZTileGrid", "GeohashGrid", "ISEA4HGrid"]
 
