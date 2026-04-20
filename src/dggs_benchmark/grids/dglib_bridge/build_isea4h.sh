@@ -2,7 +2,11 @@
 # build_isea4h.sh — Build isea4h_bridge.so against the pre-compiled dglib (v8.43)
 set -e
 
-DGGRID_SRC=/tmp/DGGRID_src
+DGGRID_SRC=${DGGRID_SRC:-/tmp/DGGRID_src}
+# Falls back to /tmp/DGGRID if _src doesn't exist
+if [ ! -d "$DGGRID_SRC" ] && [ -d "/tmp/DGGRID" ]; then
+    DGGRID_SRC=/tmp/DGGRID
+fi
 BUILD_DIR=$DGGRID_SRC/build_pic
 
 INCLUDE_DIR=$DGGRID_SRC/src/lib/dglib/include
