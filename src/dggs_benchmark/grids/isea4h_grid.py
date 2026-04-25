@@ -113,8 +113,15 @@ class ISEA4HGrid(BaseGrid):
     def get_covering(self, polygon: Polygon, resolution: int) -> list[str]:
         """
         Returns all ISEA4H cells covering the polygon.
-        Since dglib lacks a native 'polyfill', we use a dense boundary tracer
-        and interior rasterizer tightly scaled to the specified resolution.
+        
+        Since dglib lacks a native 'polyfill' (unlike H3's geo_to_cells),
+        we use a dense boundary tracer and interior rasterizer to generate
+        candidate cells, then apply a centroid-inside-polygon post-filter
+        to remove boundary cells that bleed outside the polygon.
+        
+        This mirrors the approach used by S2's get_covering and by vgrid's
+        dggrid4py integration (which generates cell polygons for the bbox
+        and filters with shapely.intersects).
         """
         bounds = polygon.bounds # (minx, miny, maxx, maxy)
         # ISEA4H aperture 4 → cells shrink faster per resolution than ISEA3H
@@ -147,7 +154,24 @@ class ISEA4HGrid(BaseGrid):
             
         bridge = self._get_bridge(resolution)
         cell_ids = bridge.encode_points(grid_points)
-        return list(set(cell_ids))
+        candidates = list(set(cell_ids))
+        
+        # --- Centroid-inside-polygon post-filter ---
+        # Boundary-traced cells straddle the polygon edge; their physical
+        # extent bleeds outside. Filter to cells whose centroid falls
+        # inside the polygon (same strategy as S2Grid.get_covering).
+        filtered = []
+        for cid in candidates:
+            try:
+                center_lat, center_lon = self.get_cell_center(cid)
+                if polygon.contains(Point(center_lon, center_lat)):
+                    filtered.append(cid)
+            except Exception:
+                pass  # Discard cells that fail polygon retrieval
+        
+        # Fallback: if the filter is too aggressive (e.g., very small polygon
+        # fully inside a single cell), return the unfiltered candidates
+        return filtered if filtered else candidates
 
     def get_k_ring(self, cell_id: str, k: int = 1) -> list[str]:
         """
