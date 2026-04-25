@@ -184,7 +184,7 @@ def run_relational_throughput(args):
             elif "rHEALPix" in grid.name:
                 sweep_resolutions[grid.name] = [8, 9, 10]
             elif "ISEA4H" in grid.name:
-                sweep_resolutions[grid.name] = [10, 11, 12]
+                sweep_resolutions[grid.name] = [12, 13, 14]
             elif "ISEA3H" in grid.name:
                 sweep_resolutions[grid.name] = [16, 17, 18, 19, 20]
             elif "Geohash" in grid.name:
@@ -201,7 +201,7 @@ def run_relational_throughput(args):
             elif "rHEALPix" in grid.name:
                 sweep_resolutions[grid.name] = [5, 6, 7, 8]
             elif "ISEA4H" in grid.name:
-                sweep_resolutions[grid.name] = [6, 7, 8, 9, 10, 11, 12]
+                sweep_resolutions[grid.name] = [6, 7, 8, 9, 10, 11, 12, 13]
             elif "ISEA3H" in grid.name:
                 sweep_resolutions[grid.name] = [10, 11, 12, 13, 14, 15, 16]
             elif "Geohash" in grid.name:
