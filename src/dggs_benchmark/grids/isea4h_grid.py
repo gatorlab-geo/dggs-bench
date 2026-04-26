@@ -125,7 +125,7 @@ class ISEA4HGrid(BaseGrid):
         """
         bounds = polygon.bounds # (minx, miny, maxx, maxy)
         # ISEA4H aperture 4 → cells shrink faster per resolution than ISEA3H
-        step_degrees = max(0.01, 15.0 / (2.0 ** resolution))
+        step_degrees = max(0.0001, 15.0 / (2.0 ** resolution))
         
         lons = np.arange(bounds[0], bounds[2] + step_degrees, step_degrees)
         lats = np.arange(bounds[1], bounds[3] + step_degrees, step_degrees)
