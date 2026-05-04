@@ -46,6 +46,8 @@ dggs-bench run geometric-distortion --grids h3,s2,xyz
 dggs-bench run geometric-distortion --samples 50000 --output-dir results/ --output-format parquet,gpkg
 
 # Pre-cache global testing datasets for standalone execution (Natural Earth + Overture Maps)
+# Note: The 10M point Foursquare OS Places dataset is hosted on OSF.io (https://osf.io/bzkx6/) 
+# and will be downloaded automatically.
 dggs-bench download-data --samples 10000000
 ```
 

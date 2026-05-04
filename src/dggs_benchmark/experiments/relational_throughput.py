@@ -132,59 +132,63 @@ class RelationalThroughputExperiment:
             fsq_token = os.environ.get('FSQ_ACCESS_TOKEN', 'YOUR_ACCESS_TOKEN_HERE')
             
             if fsq_token == 'YOUR_ACCESS_TOKEN_HERE':
-                import sys
-                sys.exit(
-                    "\n\n[AUTHENTICATION REQUIRED]\n"
-                    "To download Foursquare OS Places, you must generate a free Access Token.\n"
-                    "1. Visit the Foursquare Places Portal and generate an Iceberg Token.\n"
-                    "2. Run the command with: FSQ_ACCESS_TOKEN='your_token_here' dggs-bench run ...\n"
-                    "Alternatively, use '--point-distribution urban_synthetic' to bypass login!\n"
-                )
-
-            self.con.execute("INSTALL httpfs; LOAD httpfs;")
-            self.con.execute("INSTALL iceberg; LOAD iceberg;")
-            
-            # Attach Iceberg Secret
-            self.con.execute(f"""
-            CREATE SECRET iceberg_secret (
-                TYPE ICEBERG,
-                TOKEN '{fsq_token}'
-            );
-            """)
-            
-            # Mount the native Iceberg Cloud Catalog directly
-            self.con.execute("""
-            ATTACH 'places' AS places (
-                TYPE iceberg,
-                SECRET iceberg_secret,
-                ENDPOINT 'https://catalog.h3-hub.foursquare.com/iceberg'
-            );
-            """)
-            
-            print(f"    -> Iceberg Catalog mounted! Dynamically fetching {self.samples:,} random points natively...")
-            
-            # Because Iceberg natively provides metadata manifests, DuckDB can randomly sample the EXACT coordinates
-            # globally without waiting for 40-minute S3 wildcards or manually shuffling via Python APIs.
-            query = f"""
-                COPY (
-                    SELECT 
-                        latitude AS lat, 
-                        longitude AS lon, 
-                        'foursquare_os' AS source_dataset
-                    FROM places.datasets.places_os
-                    ORDER BY random()
-                    LIMIT {self.samples}
-                ) TO '{places_path}' (FORMAT PARQUET)
-            """
-            
-            self.con.execute(query)
-            
-            # Read back local fast index
-            points_df = pd.read_parquet(places_path)
-            
-            # Assign sequential IDs required for R-Tree JOIN tests
-            points_df['id'] = points_df.index
-            points_df.to_parquet(places_path)
+                print("  [Note] FSQ_ACCESS_TOKEN not found. Fetching public benchmark sample from OSF.io...")
+                import urllib.request
+                # URL pointing to the Foursquare OS Places 10M sample on OSF
+                url = "https://osf.io/download/69f8e42cd3c73581a8df9088/"
+                urllib.request.urlretrieve(url, places_path)
+                print("  [Success] Download from OSF complete!")
+                
+                # Ensure it has sequential IDs
+                points_df = pd.read_parquet(places_path)
+                if 'id' not in points_df.columns:
+                    points_df['id'] = points_df.index
+                    points_df.to_parquet(places_path)
+            else:
+                self.con.execute("INSTALL httpfs; LOAD httpfs;")
+                self.con.execute("INSTALL iceberg; LOAD iceberg;")
+                
+                # Attach Iceberg Secret
+                self.con.execute(f"""
+                CREATE SECRET iceberg_secret (
+                    TYPE ICEBERG,
+                    TOKEN '{fsq_token}'
+                );
+                """)
+                
+                # Mount the native Iceberg Cloud Catalog directly
+                self.con.execute("""
+                ATTACH 'places' AS places (
+                    TYPE iceberg,
+                    SECRET iceberg_secret,
+                    ENDPOINT 'https://catalog.h3-hub.foursquare.com/iceberg'
+                );
+                """)
+                
+                print(f"    -> Iceberg Catalog mounted! Dynamically fetching {self.samples:,} random points natively...")
+                
+                # Because Iceberg natively provides metadata manifests, DuckDB can randomly sample the EXACT coordinates
+                # globally without waiting for 40-minute S3 wildcards or manually shuffling via Python APIs.
+                query = f"""
+                    COPY (
+                        SELECT 
+                            latitude AS lat, 
+                            longitude AS lon, 
+                            'foursquare_os' AS source_dataset
+                        FROM places.datasets.places_os
+                        ORDER BY random()
+                        LIMIT {self.samples}
+                    ) TO '{places_path}' (FORMAT PARQUET)
+                """
+                
+                self.con.execute(query)
+                
+                # Read back local fast index
+                points_df = pd.read_parquet(places_path)
+                
+                # Assign sequential IDs required for R-Tree JOIN tests
+                points_df['id'] = points_df.index
+                points_df.to_parquet(places_path)
             
         # Read back local fast index
         points_df = pd.read_parquet(places_path)
