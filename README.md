@@ -4,7 +4,11 @@
 
 `dggs-bench` evaluates and compares the geometric properties of spherical grid systems — H3, S2, rHEALPix, A5, QTM, and standard map projections (UTM, Web Mercator, XYZ/WMTS) — using scientifically rigorous, ellipsoid-aware metrics.
 
-Built at [GATOR Lab, University of Florida](https://gatorlab.io) to support the research project *"The Planar Fallacy: Why Global GeoAI Needs Discrete Global Grid Systems."*
+Built at [GATOR Lab, University of Florida](https://gatorlab.io) to support the research paper:
+
+> **How Do Discrete Global Grid Systems Actually Perform? A Systematic Benchmark Across Geometry, Computation and Relational Joins**  
+> Submitted to *ACM Transactions in Spatial Algorithms and Systems (TSAS)*.  
+> Preprint available on EarthArXiv: [https://doi.org/10.31223/X5B47J](https://doi.org/10.31223/X5B47J)
 
 ---
 
@@ -168,7 +172,7 @@ Because `dggs-bench` was designed as a unified mathematical instrument, extendin
 
 ---
 
-## Scientific Experiments (ACM SIGSPATIAL 2026)
+## Scientific Experiments (ACM TSAS)
 
 The framework ships with three peer-reviewed computational instruments:
 
@@ -201,10 +205,19 @@ Every run writes a provenance JSON alongside the data:
 
 ## Citation
 
-If you use `dggs-bench` in your research, please cite:
+If you use `dggs-bench` in your research, please cite the framework and the accompanying paper:
 
 ```bibtex
-@software{juhasz2026dggsbench,
+@article{juhasz2026dggsbench_paper,
+  author  = {Juhász, Levente},
+  title   = {How Do Discrete Global Grid Systems Actually Perform? A Systematic Benchmark Across Geometry, Computation and Relational Joins},
+  journal = {EarthArXiv},
+  year    = {2026},
+  doi     = {10.31223/X5B47J},
+  url     = {https://doi.org/10.31223/X5B47J}
+}
+
+@software{juhasz2026dggsbench_software,
   author  = {Juhász, Levente},
   title   = {dggs-bench: A Reproducible Benchmarking Framework for Discrete Global Grid Systems},
   year    = {2026},
