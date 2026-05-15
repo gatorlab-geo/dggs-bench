@@ -30,8 +30,6 @@ pip install dggs-bench
 
 **Dependencies**: `h3`, `s2sphere`, `geopandas`, `shapely`, `pyproj`, `pyarrow`, `mercantile`, `a5`, `vgrid`
 
-> **Note**: `vgrid` must currently be installed from source. See [vgrid installation](https://github.com/thangqd/vgrid).
-
 ---
 
 ## Quick Start
