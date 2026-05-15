@@ -2,7 +2,7 @@
 
 **A reproducible benchmarking framework for Discrete Global Grid Systems (DGGS)**
 
-`dggs-bench` evaluates and compares the geometric properties of spherical grid systems — H3, S2, rHEALPix, A5, QTM, and standard map projections (UTM, Web Mercator, XYZ/WMTS) — using scientifically rigorous, ellipsoid-aware metrics.
+`dggs-bench` evaluates and compares the geometric, topological, computational, and relational properties of 11 spherical grid systems — H3, S2, rHEALPix, ISEA3H, ISEA4H, A5, QTM, Geohash, and standard map projections (UTM, Web Mercator, XYZ/WMTS) — using scientifically rigorous, ellipsoid-aware metrics.
 
 Built at [GATOR Lab, University of Florida](https://gatorlab.io) to support the research paper:
 
@@ -66,14 +66,18 @@ Output is written to `data/processed/` (or `--output-dir`) as:
 | `h3` | H3 (Uber) | Hexagon | No | Level 8 (~0.74 km²) |
 | `s2` | S2 Geometry (Google) | Square | No | Level 13 (~1.27 km²) |
 | `rhealpix` | rHEALPix | Square | **Yes** | Level 9 |
+| `isea3h` | ISEA3H (Aperture 3) | Hexagon | **Yes** | Level 16 (~1.18 km²) |
+| `isea4h` | ISEA4H (Aperture 4) | Hexagon | **Yes** | Level 12 (~3 km²) |
 | `a5` | A5 / Dodecahedron | Pentagon | No | Level 15 |
 | `qtm` | QTM | Triangle | No | Level 15 |
-| `isea3h` | ISEA3H | Hexagon | **Yes** | Level 12 |
+| `geohash` | Geohash | Rectangle | No | Level 6 (~1.2 × 0.6 km) |
 | `mercator` | Web Mercator (EPSG:3857) | Square | No | 1000 m edge |
 | `utm` | UTM (EPSG:326xx) | Square | No | 1000 m edge |
 | `xyz` | XYZ Tiles / WMTS | Square | No | Zoom 13 |
 
 All resolutions are calibrated to approximately 1 km² nominal cell area at mid-latitudes, isolating grid geometry as the independent variable.
+
+> **Note on ISEA3H / ISEA4H**: These grids use a custom C++ bridge to DGGRID's internal `dglib` library, compiled as a shared object (`isea3h_bridge.so` / `isea4h_bridge.so`). This provides high-throughput, in-process encoding without subprocess overhead. See [DGGRID Bridge Documentation](https://github.com/gatorlab-geo/dggs-bench/blob/main/docs/isea3h_dglib_bridge.md) for build instructions and architecture details. The pre-built `.so` files are Linux x86_64; rebuild from source on other platforms using the included `build.sh` scripts.
 
 ---
 
@@ -172,7 +176,7 @@ Because `dggs-bench` was designed as a unified mathematical instrument, extendin
 
 ## Scientific Experiments (ACM TSAS)
 
-The framework ships with three peer-reviewed computational instruments:
+The framework ships with four peer-reviewed computational instruments:
 
 | CMD | Name | Description |
 |---|---|---|
