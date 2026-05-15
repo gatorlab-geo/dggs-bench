@@ -14,9 +14,9 @@ Built at [GATOR Lab, University of Florida](https://gatorlab.io) to support the 
 
 ## Background
 
-Modern geospatial foundation models (AlphaEarth, etc.) are trained on data tiled or projected using planar coordinate systems (Web Mercator, UTM). These systems introduce systematic metric distortion — cells near the poles are geometrically different from cells near the equator even when they represent the same nominal resolution. This breaks the **translational equivariance** that deep learning depends on.
+Discrete Global Grid Systems (DGGS) offer an alternative to traditional planar map projections by tessellating the Earth's surface into a hierarchy of cells. However, the theoretical benefits of DGGS are often offset by practical implementation trade-offs. Different grid systems—such as those based on icosahedrons, dodecahedrons, or quadtrees—exhibit varying levels of metric distortion, computational overhead, and topological anomalies near poles or boundaries. 
 
-`dggs-bench` provides the experimental infrastructure to quantify this distortion precisely — comparing the geodetic area variance, shape compactness, and topological behaviour of each grid system across all latitudes.
+`dggs-bench` provides the experimental infrastructure to quantify these characteristics precisely — comparing the geodetic area variance, shape compactness, topological resilience, and relational throughput of each grid system systematically at scale.
 
 ---
 
@@ -167,8 +167,8 @@ dggs-bench generate-points --samples 10000 --output-dir data/ --output-format pa
 
 Because `dggs-bench` was designed as a unified mathematical instrument, extending it for your own research is highly encouraged. 
 
-- **Adding a New Grid System**: Follow the [Custom Grid Developer Guide](docs/custom_grids.md) to wrap your projection into the standardized `BaseGrid` API.
-- **Adding a New Experiment**: Follow the [Custom Experiment Developer Guide](docs/custom_experiments.md) to write a new scientific Python engine evaluating multi-resolution topology, containment, or other novel metrics.
+- **Adding a New Grid System**: Follow the [Custom Grid Developer Guide](https://github.com/gatorlab-geo/dggs-bench/blob/main/docs/custom_grids.md) to wrap your projection into the standardized `BaseGrid` API.
+- **Adding a New Experiment**: Follow the [Custom Experiment Developer Guide](https://github.com/gatorlab-geo/dggs-bench/blob/main/docs/custom_experiments.md) to write a new scientific Python engine evaluating multi-resolution topology, containment, or other novel metrics.
 
 ---
 
@@ -221,7 +221,7 @@ If you use `dggs-bench` in your research, please cite the framework and the acco
   author  = {Juhász, Levente},
   title   = {dggs-bench: A Reproducible Benchmarking Framework for Discrete Global Grid Systems},
   year    = {2026},
-  url     = {https://github.com/gatorlab/dggs-benchmark},
+  url     = {https://github.com/gatorlab-geo/dggs-bench},
   institution = {GATOR Lab, University of Florida}
 }
 ```

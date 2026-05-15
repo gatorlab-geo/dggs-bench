@@ -44,8 +44,8 @@ dependencies = [
 requires-python = ">=3.9"
 
 [project.urls]
-Homepage = "https://github.com/gatorlab/dggs-benchmark"
-"Bug Tracker" = "https://github.com/gatorlab/dggs-benchmark/issues"
+Homepage = "https://github.com/gatorlab-geo/dggs-bench"
+"Bug Tracker" = "https://github.com/gatorlab-geo/dggs-bench/issues"
 Organization = "https://gatorlab.io"
 
 [project.scripts]
