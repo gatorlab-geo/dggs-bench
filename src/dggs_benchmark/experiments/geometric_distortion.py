@@ -93,19 +93,34 @@ class GeometricDistortionExperiment:
                         # We pre-orient to CCW (sign=1.0) because antimeridian treats CW as Earth-spanning holes.
                         oriented_poly = orient(raw_polygon, sign=1.0)
                         
-                        with warnings.catch_warnings():
-                            warnings.simplefilter("ignore", category=UserWarning) 
-                            fixed_poly = antimeridian.fix_polygon(oriented_poly)
-                            
-                            # If a strictly polar geometry (e.g. North Pole) is passed CCW, antimeridian
-                            # misinterprets it as covering everything SOUTH of the pole. The bounds balloon
-                            # to (-180, -90, 180, 90). In this edge case, CW orientation correctly isolates the pole.
-                            if fixed_poly.bounds[1] == -90.0 and fixed_poly.bounds[3] == 90.0:
-                                fixed_poly = antimeridian.fix_polygon(orient(raw_polygon, sign=-1.0))
+                        # Only apply antimeridian correction if the polygon actually has edges
+                        # crossing the 180° meridian. The antimeridian library can corrupt small
+                        # polygons that are near but not crossing the date line (dropping vertices
+                        # and shrinking measured area by up to 60%). Detect crossing by checking
+                        # for consecutive vertex pairs with longitude jumps > 180°.
+                        crosses_am = False
+                        ext_coords = list(oriented_poly.exterior.coords)
+                        for ci in range(len(ext_coords) - 1):
+                            if abs(ext_coords[ci][0] - ext_coords[ci + 1][0]) > 180:
+                                crosses_am = True
+                                break
+                        
+                        if crosses_am:
+                            with warnings.catch_warnings():
+                                warnings.simplefilter("ignore", category=UserWarning) 
+                                fixed_poly = antimeridian.fix_polygon(oriented_poly)
                                 
-                                # If it STILL spans the Earth (unlikely), abort segmentization to avoid 40,000km perimeter explosion
+                                # If a strictly polar geometry (e.g. North Pole) is passed CCW, antimeridian
+                                # misinterprets it as covering everything SOUTH of the pole. The bounds balloon
+                                # to (-180, -90, 180, 90). In this edge case, CW orientation correctly isolates the pole.
                                 if fixed_poly.bounds[1] == -90.0 and fixed_poly.bounds[3] == 90.0:
-                                    raise ValueError("Polarity unresolvable")
+                                    fixed_poly = antimeridian.fix_polygon(orient(raw_polygon, sign=-1.0))
+                                    
+                                    # If it STILL spans the Earth (unlikely), abort segmentization to avoid 40,000km perimeter explosion
+                                    if fixed_poly.bounds[1] == -90.0 and fixed_poly.bounds[3] == 90.0:
+                                        raise ValueError("Polarity unresolvable")
+                        else:
+                            fixed_poly = oriented_poly
                         
                         # Densify edges every ~500m (0.005 deg) to accurately trace parallels.
                         polygon = segmentize(fixed_poly, max_segment_length=0.005)

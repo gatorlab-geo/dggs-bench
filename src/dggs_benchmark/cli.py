@@ -263,6 +263,69 @@ def run_download_data(args):
     
     print("\n[Success] All testing datasets successfully cached to project data/ directory!")
 
+
+# ---------------------------------------------------------------------------
+# Release Parquets for examples/ Figure Generation
+# ---------------------------------------------------------------------------
+# After uploading the release parquets to OSF, update the file IDs below.
+# URL format: https://osf.io/download/<FILE_ID>/
+
+_RELEASE_FILES = {
+    "geometric_distortion.parquet": {
+        "url": "https://osf.io/download/k2fma/",
+        "desc": "Geometric Distortion — × 11 grids",
+    },
+    "topological_resilience.parquet": {
+        "url": "https://osf.io/download/bpa6k/",
+        "desc": "Topological Resilience — × 11 grids",
+    },
+}
+
+def run_download_examples(args):
+    """
+    Downloads pre-built release parquets from OSF.io so that the examples/
+    figure generation script works out of the box.
+    """
+    import urllib.request
+    from pathlib import Path
+
+    project_root = Path(__file__).resolve().parents[2]
+    release_dir = project_root / "data" / "tsas_v1" / "release"
+    release_dir.mkdir(parents=True, exist_ok=True)
+
+    print("--- Downloading Pre-Built Benchmark Results for Figure Generation ---")
+    print(f"  Target: {release_dir}")
+    print()
+
+    for filename, meta in _RELEASE_FILES.items():
+        dest = release_dir / filename
+        if dest.exists() and not args.force:
+            print(f"  [Skip] {filename} already exists (use --force to re-download)")
+            continue
+
+        url = meta["url"]
+        if "PLACEHOLDER" in url:
+            print(f"  [Error] {filename}: OSF file ID not yet configured. "
+                  f"Update _RELEASE_FILES in cli.py after uploading to OSF.")
+            continue
+
+        print(f"  [{filename}] {meta['desc']}")
+        print(f"    Downloading from OSF... ", end="", flush=True)
+
+        try:
+            urllib.request.urlretrieve(url, dest)
+            size_mb = dest.stat().st_size / 1e6
+            print(f"{size_mb:.1f} MB ✓")
+        except Exception as e:
+            print(f"FAILED: {e}")
+            if dest.exists():
+                dest.unlink()
+
+    print()
+    print("[Success] Release data ready. Generate figures with:")
+    print("  python examples/generate_paper_figures.py")
+
+
 def run_topological_resilience(args):
     from dggs_benchmark.experiments.topological_resilience import TopologicalResilienceExperiment
 
@@ -524,6 +587,16 @@ Grid Selection:
     download_parser = subparsers.add_parser("download-data", help="Pre-download mapping data for offline/standalone execution.")
     download_parser.add_argument("--samples", type=int, default=10000000, help="Number of Foursquare OS Places records to cache.")
 
+    # -- download-examples --------------------------------------------------
+    dl_examples_parser = subparsers.add_parser(
+        "download-examples",
+        help="Download pre-built benchmark results from OSF.io for figure generation."
+    )
+    dl_examples_parser.add_argument(
+        "--force", action="store_true",
+        help="Re-download even if files already exist locally."
+    )
+
     # -- list ---------------------------------------------------------------
     subparsers.add_parser("list", help="List all available grid aliases")
 
@@ -547,6 +620,8 @@ Grid Selection:
         run_generate_points(args)
     elif args.command == "download-data":
         run_download_data(args)
+    elif args.command == "download-examples":
+        run_download_examples(args)
     elif args.command == "list":
         cmd_list(args)
 

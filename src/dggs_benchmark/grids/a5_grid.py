@@ -10,7 +10,7 @@ class A5Grid(BaseGrid):
 
     @property
     def is_equal_area(self) -> bool:
-        return False
+        return True
 
     def encode_point(self, lat: float, lon: float, resolution: int) -> str:
         """
