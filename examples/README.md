@@ -123,6 +123,8 @@ The figures below are generated from the pre-built 11-grid release dataset (1M s
 
 **Area CV** — coefficient of variation of geodetic cell area across the globe (lower = more uniform). **ZSC** — Zone Standardized Compactness, the ratio of a cell's perimeter to that of an equal-area spherical cap (1.0 = perfect circle).
 
+> **Note on QTM:** The extreme area CV (6,020%) and the 140K missing cells are artifacts of the current `vgrid` backend, not properties of the QTM grid system itself. The backend fails to encode ~14% of sample points that land on octahedral edges (equator, poles, certain meridians) and returns truncated parent-level cell IDs for ~1% of points near those edges. These parent cells span up to 4% of Earth's surface each, inflating the mean area by ~5,000× over the median. When only correctly resolved leaf cells are counted, QTM exhibits an area CV of ~16% with a 3.3× max/min ratio. This is a known limitation and will be addressed in a future backend update.
+
 ### Area and Angular Profiles
 
 Normalized cell area and angular deviation plotted against latitude and longitude. Each line represents one grid system.
